@@ -29,6 +29,15 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+const IMPACT_EXAMPLES: { label: string; asset_id: string; horizon_hours: number }[] = [
+  { label: 'Transformer aux', asset_id: 'TRF-12-AUX1', horizon_hours: 48 },
+  { label: 'Chiller lead', asset_id: 'CH-S3-LEAD', horizon_hours: 24 },
+  { label: 'Feeder / bus', asset_id: 'BUS-A', horizon_hours: 72 },
+  { label: 'AHU critical', asset_id: 'AHU-L14-EF-01', horizon_hours: 12 },
+  { label: 'Week-long horizon', asset_id: 'LOAD-12', horizon_hours: 168 },
+  { label: 'Edge case id', asset_id: 'EDGE-ASSET-001', horizon_hours: 720 },
+]
+
 export function ImpactPage() {
   const [result, setResult] = useState<ImpactResponse | null>(null)
 
@@ -108,6 +117,24 @@ export function ImpactPage() {
               <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)} noValidate>
                 <div className="space-y-2">
                   <Label htmlFor="asset_id">Failed asset id</Label>
+                  <p className="text-xs text-zinc-500">Try an example</p>
+                  <div className="flex flex-wrap gap-2">
+                    {IMPACT_EXAMPLES.map((ex) => (
+                      <Button
+                        key={ex.label}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-auto max-w-full whitespace-normal py-1.5 text-left text-xs font-normal"
+                        onClick={() => {
+                          form.setValue('asset_id', ex.asset_id)
+                          form.setValue('horizon_hours', ex.horizon_hours)
+                        }}
+                      >
+                        {ex.label}
+                      </Button>
+                    ))}
+                  </div>
                   <Input
                     id="asset_id"
                     placeholder="e.g. TRF-12-AUX1"
