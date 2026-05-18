@@ -14,6 +14,12 @@ STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 _cors = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
 ALLOW_ORIGINS = [o.strip() for o in _cors.split(",") if o.strip()]
+ALLOW_ORIGIN_REGEX = os.getenv(
+    "CORS_ORIGIN_REGEX",
+    r"^http://(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"
+    r"192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|"
+    r"\[::1\])(:\d+)?$",
+)
 
 app = FastAPI(
     title="SpatialNexus",
@@ -24,6 +30,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOW_ORIGINS,
+    allow_origin_regex=ALLOW_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -155,6 +162,87 @@ def health() -> dict:
             os.getenv("NEO4J_URI", "").strip() and os.getenv("NEO4J_PASSWORD", "").strip()
         ),
     }
+
+
+class SubgraphResponse(BaseModel):
+    request_id: str
+    seed: str
+    depth: int
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
+    source: str
+
+
+@app.get("/v1/graph/subgraph", response_model=SubgraphResponse)
+def subgraph(seed: str, depth: int = 2, limit: int = 100) -> SubgraphResponse:
+    """Variable-depth neighbourhood around a seed asset for the graph explorer."""
+    uri = os.getenv("NEO4J_URI", "").strip()
+    user = os.getenv("NEO4J_USER", "neo4j").strip()
+    password = os.getenv("NEO4J_PASSWORD", "").strip()
+    if not uri or not password:
+        raise HTTPException(
+            status_code=503,
+            detail="Neo4j is not configured — set NEO4J_URI and NEO4J_PASSWORD.",
+        )
+    try:
+        from neo4j import GraphDatabase
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail=f"neo4j driver missing: {e}") from e
+
+    depth_clamped = max(1, min(int(depth or 2), 4))
+    limit_clamped = max(1, min(int(limit or 100), 500))
+    rid = str(uuid.uuid4())
+    nodes: dict[str, GraphNode] = {}
+    edges: list[GraphEdge] = []
+    drv = None
+    try:
+        drv = GraphDatabase.driver(uri, auth=(user, password))
+        with drv.session() as session:
+            cypher = (
+                "MATCH p=(seed)-[*1.." + str(depth_clamped) + "]-(n) "
+                "WHERE seed.id = $seed OR seed.name = $seed "
+                "OR toString(seed.asset_id) = $seed "
+                "WITH relationships(p) AS rels, nodes(p) AS ns LIMIT $limit "
+                "UNWIND ns AS nx UNWIND rels AS rx "
+                "RETURN DISTINCT nx, rx"
+            )
+            res = session.run(cypher, seed=seed.strip(), limit=limit_clamped)
+            for record in res:
+                nx = record["nx"]
+                rx = record["rx"]
+                props = dict(nx)
+                nid = str(props.get("id") or props.get("name") or nx.element_id)
+                lbls = ":".join(nx.labels) if hasattr(nx, "labels") else "node"
+                if nid not in nodes:
+                    nodes[nid] = GraphNode(
+                        id=nid,
+                        label=str(props.get("name") or nid),
+                        kind=lbls.lower(),
+                    )
+                start = rx.start_node
+                end = rx.end_node
+                sp = dict(start)
+                ep = dict(end)
+                sid = str(sp.get("id") or sp.get("name") or start.element_id)
+                eid = str(ep.get("id") or ep.get("name") or end.element_id)
+                edges.append(GraphEdge(source=sid, target=eid, relation=str(rx.type)))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Neo4j subgraph failed: {e}") from e
+    finally:
+        if drv is not None:
+            try:
+                drv.close()
+            except Exception:
+                pass
+
+    return SubgraphResponse(
+        request_id=rid,
+        seed=seed,
+        depth=depth_clamped,
+        nodes=list(nodes.values()),
+        edges=edges,
+        source="neo4j",
+    )
 
 
 @app.post("/v1/impact", response_model=ImpactResponse)
