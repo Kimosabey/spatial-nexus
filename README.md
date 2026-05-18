@@ -1,6 +1,31 @@
-# SpatialNexus
+<p align="center">
+  <img src="docs/img/banner.svg" alt="SpatialNexus — Topology Atlas" width="100%" />
+</p>
 
-**GraphRAG / topology** — **`POST /v1/impact`** runs **Cypher** on **Neo4j** and returns **nodes** and **edges** (no stub graph: Neo4j must be configured). The **web** app includes a **React Flow** graph explorer (`@xyflow/react`) fed by the same payload.
+# SpatialNexus · Topology Atlas
+
+> **GraphRAG / topology** — **`POST /v1/impact`** and **`GET /v1/graph/subgraph`** run **Cypher** on **Neo4j** and return **nodes** and **edges** (no stub graph: Neo4j must be configured). The **web** app includes a **React Flow** graph explorer (`@xyflow/react`) fed by the same payload.
+
+| Spec | Value |
+|---|---|
+| **Theme** | Atlas Blueprint — cobalt + sage on ivory, DM Serif Display + IBM Plex Mono |
+| **Port** | `:8103` |
+| **Stack** | FastAPI · Neo4j 5 · Vite · React 19 · @xyflow/react · Tailwind 4 |
+
+### Quick links
+[API.md](docs/API.md) · [ARCHITECTURE.md](docs/ARCHITECTURE.md) · [PLAN.md](docs/PLAN.md) · [TESTING.md](docs/TESTING.md) · [UI.md](docs/UI.md) · [CHANGELOG.md](docs/CHANGELOG.md) · [SCREENSHOTS.md](docs/SCREENSHOTS.md) · [Suite — Ports & URLs](../docs/PORTS_AND_URLS.md)
+
+### Open these to test
+
+| What | Localhost | LAN |
+|---|---|---|
+| Swagger | http://127.0.0.1:8103/docs | http://&lt;LAN_IP&gt;:8103/docs |
+| Health | http://127.0.0.1:8103/health | http://&lt;LAN_IP&gt;:8103/health |
+| Subgraph | http://127.0.0.1:8103/v1/graph/subgraph?seed=PUMP-A1&depth=2 | http://&lt;LAN_IP&gt;:8103/v1/graph/subgraph?seed=PUMP-A1&depth=2 |
+| Neo4j Browser | http://127.0.0.1:7474 | http://&lt;LAN_IP&gt;:7474 |
+| UI | http://localhost:5173 | http://&lt;LAN_IP&gt;:5173 |
+
+
 
 | | |
 |--|--|
