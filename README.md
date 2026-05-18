@@ -13,7 +13,7 @@
 | **Stack** | FastAPI · Neo4j 5 · Vite · React 19 · @xyflow/react · Tailwind 4 |
 
 ### Quick links
-[API.md](docs/API.md) · [ARCHITECTURE.md](docs/ARCHITECTURE.md) · [PLAN.md](docs/PLAN.md) · [TESTING.md](docs/TESTING.md) · [UI.md](docs/UI.md) · [CHANGELOG.md](docs/CHANGELOG.md) · [SCREENSHOTS.md](docs/SCREENSHOTS.md) · [Suite — Ports & URLs](../docs/PORTS_AND_URLS.md)
+[API.md](docs/API.md) · [ARCHITECTURE.md](docs/ARCHITECTURE.md) · [PLAN.md](docs/PLAN.md) · [TESTING.md](docs/TESTING.md) · [UI.md](docs/UI.md) · [CHANGELOG.md](docs/CHANGELOG.md) · [SCREENSHOTS.md](docs/SCREENSHOTS.md) · [scripts/README — ETL](scripts/README.md) · [Suite — Ports & URLs](../docs/PORTS_AND_URLS.md)
 
 ### Open these to test
 

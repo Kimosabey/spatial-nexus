@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- `scripts/etl_from_unicharm.py` — idempotent ETL from a unicharm-shaped MySQL
+  DB into Neo4j (Organization → Campus → Building → Floor → Area → Location;
+  Subsystem + Gateway with self-parent + location maps). Includes `--dry-run`
+  and `--wipe` flags. `scripts/README.md` documents env vars + Neo4j Desktop
+  setup.
 - `GET /v1/graph/subgraph` — variable-depth Cypher neighbourhood (depth 1..4,
   limit 1..500). Powers a multi-hop React Flow explorer beyond the one-hop
   `/v1/impact` view.
