@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { BookOpen, ExternalLink, GitBranch, Layers, Loader2, Map } from 'lucide-react'
+import { BookOpen, ExternalLink, GitBranch, Layers, Loader2, Map, Network } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { getHealth, postImpact, type ImpactResponse } from '@/lib/api'
+import { getHealth, getSubgraph, postImpact, type GraphEdge, type GraphNode, type ImpactResponse } from '@/lib/api'
 
 const schema = z.object({
   asset_id: z.string().min(1, 'Enter a failed asset or component id.'),
@@ -43,6 +43,18 @@ const IMPACT_EXAMPLES: { label: string; asset_id: string; horizon_hours: number 
 
 export function ImpactPage() {
   const [result, setResult] = useState<ImpactResponse | null>(null)
+  const [traceDepth, setTraceDepth] = useState(2)
+  const [traceSeed, setTraceSeed] = useState<string | null>(null)
+
+  const subgraphQuery = useQuery({
+    queryKey: ['subgraph', traceSeed, traceDepth],
+    queryFn: () => getSubgraph(traceSeed!, traceDepth),
+    enabled: !!traceSeed,
+    staleTime: 30_000,
+  })
+
+  const traceNodes: GraphNode[] = subgraphQuery.data?.nodes ?? result?.nodes ?? []
+  const traceEdges: GraphEdge[] = subgraphQuery.data?.edges ?? result?.edges ?? []
 
   const healthQuery = useQuery({
     queryKey: ['spatial-nexus-health'],
@@ -60,6 +72,7 @@ export function ImpactPage() {
     mutationFn: postImpact,
     onSuccess: (data) => {
       setResult(data)
+      setTraceSeed(data.asset_id)
       toast.success('Impact analysis ready', { description: data.request_id })
     },
     onError: (e: Error) => toast.error('Impact failed', { description: e.message }),
@@ -258,13 +271,55 @@ export function ImpactPage() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Graph explorer</CardTitle>
-                <CardDescription>
-                  Pan, zoom, and drag nodes. Data from the same /v1/impact payload.
-                </CardDescription>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Network className="size-4 text-[var(--color-cobalt)]" aria-hidden />
+                      Full circuit trace
+                    </CardTitle>
+                    <CardDescription>
+                      Depth-{traceDepth} neighbourhood from{' '}
+                      <code className="mono text-xs">{traceSeed}</code> via{' '}
+                      <code className="mono text-xs">/v1/graph/subgraph</code>.
+                      {subgraphQuery.isFetching && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-xs text-[var(--color-sage-deep)]">
+                          <Loader2 className="size-3 animate-spin" aria-hidden />
+                          Fetching…
+                        </span>
+                      )}
+                    </CardDescription>
+                  </div>
+                  {/* Depth slider */}
+                  <div className="flex items-center gap-3 text-sm" role="group" aria-label="Trace depth">
+                    <span className="text-xs text-zinc-500">Depth</span>
+                    {[1, 2, 3, 4].map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setTraceDepth(d)}
+                        aria-pressed={traceDepth === d}
+                        className={[
+                          'mono flex size-7 items-center justify-center rounded-md border text-xs font-bold transition-colors',
+                          traceDepth === d
+                            ? 'border-[var(--color-cobalt)] bg-[var(--color-cobalt)] text-white'
+                            : 'border-[var(--color-blueprint-edge)] bg-white text-[var(--color-cobalt-deep)] hover:border-[var(--color-cobalt)]',
+                        ].join(' ')}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                    <span className="tabular-nums text-xs text-zinc-400">
+                      {traceNodes.length} nodes · {traceEdges.length} edges
+                    </span>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
-                <ImpactGraphFlow key={result.request_id} nodes={result.nodes} edges={result.edges} />
+                <ImpactGraphFlow
+                  key={`${traceSeed}-d${traceDepth}`}
+                  nodes={traceNodes}
+                  edges={traceEdges}
+                />
               </CardContent>
             </Card>
             <Card>

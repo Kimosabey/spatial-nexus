@@ -193,23 +193,23 @@ def subgraph(seed: str, depth: int = 2, limit: int = 100) -> SubgraphResponse:
     limit_clamped = max(1, min(int(limit or 100), 500))
     rid = str(uuid.uuid4())
     nodes: dict[str, GraphNode] = {}
+    edge_keys: set[tuple[str, str, str]] = set()
     edges: list[GraphEdge] = []
     drv = None
     try:
         drv = GraphDatabase.driver(uri, auth=(user, password))
         with drv.session() as session:
-            cypher = (
+            # Collect distinct nodes and edges in two separate passes to avoid
+            # the cross-product that UNWIND ns × UNWIND rels produces.
+            node_cypher = (
                 "MATCH p=(seed)-[*1.." + str(depth_clamped) + "]-(n) "
                 "WHERE seed.id = $seed OR seed.name = $seed "
                 "OR toString(seed.asset_id) = $seed "
-                "WITH relationships(p) AS rels, nodes(p) AS ns LIMIT $limit "
-                "UNWIND ns AS nx UNWIND rels AS rx "
-                "RETURN DISTINCT nx, rx"
+                "UNWIND nodes(p) AS nx "
+                "RETURN DISTINCT nx LIMIT $limit"
             )
-            res = session.run(cypher, seed=seed.strip(), limit=limit_clamped)
-            for record in res:
+            for record in session.run(node_cypher, seed=seed.strip(), limit=limit_clamped):
                 nx = record["nx"]
-                rx = record["rx"]
                 props = dict(nx)
                 nid = str(props.get("id") or props.get("name") or nx.element_id)
                 lbls = ":".join(nx.labels) if hasattr(nx, "labels") else "node"
@@ -219,13 +219,27 @@ def subgraph(seed: str, depth: int = 2, limit: int = 100) -> SubgraphResponse:
                         label=str(props.get("name") or nid),
                         kind=lbls.lower(),
                     )
-                start = rx.start_node
-                end = rx.end_node
-                sp = dict(start)
-                ep = dict(end)
-                sid = str(sp.get("id") or sp.get("name") or start.element_id)
-                eid = str(ep.get("id") or ep.get("name") or end.element_id)
-                edges.append(GraphEdge(source=sid, target=eid, relation=str(rx.type)))
+
+            edge_cypher = (
+                "MATCH p=(seed)-[*1.." + str(depth_clamped) + "]-(n) "
+                "WHERE seed.id = $seed OR seed.name = $seed "
+                "OR toString(seed.asset_id) = $seed "
+                "UNWIND relationships(p) AS rx "
+                "WITH DISTINCT rx, startNode(rx) AS sn, endNode(rx) AS en "
+                "RETURN rx, sn, en LIMIT $limit"
+            )
+            for record in session.run(edge_cypher, seed=seed.strip(), limit=limit_clamped * 4):
+                rx = record["rx"]
+                sn = record["sn"]
+                en = record["en"]
+                sp = dict(sn)
+                ep = dict(en)
+                sid = str(sp.get("id") or sp.get("name") or sn.element_id)
+                eid = str(ep.get("id") or ep.get("name") or en.element_id)
+                key = (sid, eid, str(rx.type))
+                if key not in edge_keys:
+                    edge_keys.add(key)
+                    edges.append(GraphEdge(source=sid, target=eid, relation=str(rx.type)))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Neo4j subgraph failed: {e}") from e
     finally:
