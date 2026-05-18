@@ -1,6 +1,6 @@
 # SpatialNexus
 
-**GraphRAG / topology** — **impact analysis** for a failed **asset id** over a **time horizon** (hours). With **`NEO4J_URI`** + credentials, the API runs **Cypher** to return **nodes** and **edges** from your graph; otherwise a **deterministic stub** illustrates the contract. The **web** app includes a **React Flow** graph explorer (`@xyflow/react`) fed by the same payload.
+**GraphRAG / topology** — **`POST /v1/impact`** runs **Cypher** on **Neo4j** and returns **nodes** and **edges** (no stub graph: Neo4j must be configured). The **web** app includes a **React Flow** graph explorer (`@xyflow/react`) fed by the same payload.
 
 | | |
 |--|--|
@@ -10,6 +10,18 @@
 | **Stack** | FastAPI · **neo4j** driver 5.x · **web:** Vite · React 19 · TypeScript · Tailwind 4 · TanStack Query · RHF · Zod · **@xyflow/react** · Framer Motion · Sonner · Lucide |
 | **Roadmap** | [docs/PLAN.md](docs/PLAN.md) |
 | **UI / UX** | [docs/UI.md](docs/UI.md) |
+| **DB & DBeaver (suite)** | [../docs/DATABASE_AND_DBEAVER.md](../docs/DATABASE_AND_DBEAVER.md) |
+
+---
+
+## Neo4j (Docker / DBeaver / Browser)
+
+Compose exposes **Bolt `127.0.0.1:7687`** and **HTTP Browser `http://127.0.0.1:7474`**. Default user `neo4j`, password `spatialdevpassword` (see `docker-compose.yml` / `.env.example`).
+
+- **DBeaver:** New connection → Neo4j → URL `bolt://127.0.0.1:7687`.
+- **Seed demo:** [`scripts/seed.cypher`](scripts/seed.cypher) (e.g. asset id `PUMP-A1`).
+
+Full port matrix and clash notes: [DATABASE_AND_DBEAVER.md](../docs/DATABASE_AND_DBEAVER.md).
 
 ---
 
@@ -17,7 +29,7 @@
 
 ```
 spatial-nexus/
-├── app/main.py              # POST /v1/impact, Neo4j + stub fallback
+├── app/main.py              # POST /v1/impact (Neo4j required; no stub graph)
 ├── web/
 │   ├── src/
 │   │   ├── pages/ImpactPage.tsx

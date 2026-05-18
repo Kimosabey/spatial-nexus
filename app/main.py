@@ -2,7 +2,7 @@ import os
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -54,33 +54,7 @@ class ImpactResponse(BaseModel):
     nodes: list[GraphNode]
     edges: list[GraphEdge]
     narrative: str
-    source: str  # "neo4j" | "stub"
-
-
-def _stub_impact(asset_id: str, horizon_hours: int, request_id: str) -> ImpactResponse:
-    base = asset_id.strip().upper()[:32]
-    nodes = [
-        GraphNode(id=f"{base}-ASSET", label=f"Asset {base}", kind="asset"),
-        GraphNode(id="BUS-A", label="BUS-A upstream", kind="bus"),
-        GraphNode(id="LOAD-12", label="Feeder LOAD-12", kind="load"),
-    ]
-    edges = [
-        GraphEdge(source="BUS-A", target=f"{base}-ASSET", relation="feeds"),
-        GraphEdge(source=f"{base}-ASSET", target="LOAD-12", relation="supplies"),
-    ]
-    narrative = (
-        f"Stub impact cone for `{base}` within {horizon_hours}h horizon. "
-        "Connect NEO4J_URI to run live Cypher against your topology graph."
-    )
-    return ImpactResponse(
-        request_id=request_id,
-        asset_id=asset_id,
-        horizon_hours=horizon_hours,
-        nodes=nodes,
-        edges=edges,
-        narrative=narrative,
-        source="stub",
-    )
+    source: str  # always "neo4j" on success
 
 
 def _neo4j_impact(asset_id: str, horizon_hours: int, request_id: str) -> ImpactResponse | None:
@@ -143,7 +117,18 @@ def _neo4j_impact(asset_id: str, horizon_hours: int, request_id: str) -> ImpactR
                 pass
 
     if not nodes and not edges:
-        return None
+        return ImpactResponse(
+            request_id=request_id,
+            asset_id=asset_id,
+            horizon_hours=horizon_hours,
+            nodes=[],
+            edges=[],
+            narrative=(
+                f"No Neo4j neighbourhood found for `{asset_id}`. "
+                "Verify the asset id or load scripts/seed.cypher."
+            ),
+            source="neo4j",
+        )
 
     narrative = (
         f"Neo4j graph neighbourhood for `{asset_id}` "
@@ -162,16 +147,33 @@ def _neo4j_impact(asset_id: str, horizon_hours: int, request_id: str) -> ImpactR
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": SERVICE_SLUG, "port": PORT}
+    return {
+        "status": "ok",
+        "service": SERVICE_SLUG,
+        "port": PORT,
+        "neo4j_configured": bool(
+            os.getenv("NEO4J_URI", "").strip() and os.getenv("NEO4J_PASSWORD", "").strip()
+        ),
+    }
 
 
 @app.post("/v1/impact", response_model=ImpactResponse)
 def impact_v1(body: ImpactRequest) -> ImpactResponse:
     request_id = str(uuid.uuid4())
+    uri = os.getenv("NEO4J_URI", "").strip()
+    password = os.getenv("NEO4J_PASSWORD", "").strip()
+    if not uri or not password:
+        raise HTTPException(
+            status_code=503,
+            detail="Neo4j is not configured — set NEO4J_URI and NEO4J_PASSWORD (no stub graph in production mode).",
+        )
     live = _neo4j_impact(body.asset_id, body.horizon_hours, request_id)
     if live is not None:
         return live
-    return _stub_impact(body.asset_id, body.horizon_hours, request_id)
+    raise HTTPException(
+        status_code=503,
+        detail="Neo4j query failed or returned no data. Check credentials, seed data, and asset_id.",
+    )
 
 
 if STATIC_DIR.is_dir():

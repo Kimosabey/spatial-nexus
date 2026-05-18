@@ -21,8 +21,9 @@
 
 ## Current status
 
-- FastAPI scaffold + `/health` live.
-- **`web/`**, Neo4j, and graph UI **not started**.
+- **`POST /v1/impact`** requires **Neo4j** (`NEO4J_URI`, `NEO4J_PASSWORD`); returns **503** if unset. **No stub graph.** Demo seed: [`scripts/seed.cypher`](scripts/seed.cypher) (asset id `PUMP-A1`).
+- **`web/`** — impact form + results UI.
+- Docker Compose includes **Neo4j** service.
 
 ## Dependency on other services
 
