@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { BookOpen, ExternalLink, GitBranch, Loader2, Map } from 'lucide-react'
+import { BookOpen, ExternalLink, GitBranch, Layers, Loader2, Map } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { postImpact, type ImpactResponse } from '@/lib/api'
+import { getHealth, postImpact, type ImpactResponse } from '@/lib/api'
 
 const schema = z.object({
   asset_id: z.string().min(1, 'Enter a failed asset or component id.'),
@@ -30,16 +30,26 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 const IMPACT_EXAMPLES: { label: string; asset_id: string; horizon_hours: number }[] = [
-  { label: 'Transformer aux', asset_id: 'TRF-12-AUX1', horizon_hours: 48 },
-  { label: 'Chiller lead', asset_id: 'CH-S3-LEAD', horizon_hours: 24 },
-  { label: 'Feeder / bus', asset_id: 'BUS-A', horizon_hours: 72 },
-  { label: 'AHU critical', asset_id: 'AHU-L14-EF-01', horizon_hours: 12 },
-  { label: 'Week-long horizon', asset_id: 'LOAD-12', horizon_hours: 168 },
-  { label: 'Edge case id', asset_id: 'EDGE-ASSET-001', horizon_hours: 720 },
+  { label: 'Chiller 1 trip',           asset_id: 'CH-0001b00000',       horizon_hours: 24 },
+  { label: 'Chiller 2 trip',           asset_id: 'CH-0002b00000',       horizon_hours: 24 },
+  { label: 'Condenser Pump 1 fail',    asset_id: 'CONDPU-0001b40000',   horizon_hours: 12 },
+  { label: 'Cooling Tower 1 offline',  asset_id: 'CT-0001b70000',       horizon_hours: 48 },
+  { label: 'Primary Pump 1 low flow',  asset_id: 'PV-0001b20000',       horizon_hours: 24 },
+  { label: 'BTM sensor loss',          asset_id: 'BTM-0001110000',      horizon_hours: 72 },
+  { label: 'Energy Meter 1 fault',     asset_id: 'EM-0001000000',       horizon_hours: 8  },
+  { label: 'Make-up Pump 1 shutdown',  asset_id: 'MWP-0001150000',      horizon_hours: 24 },
+  { label: 'Plant-wide — 1 week',      asset_id: 'PLANT-UNICHARM',      horizon_hours: 168},
 ]
 
 export function ImpactPage() {
   const [result, setResult] = useState<ImpactResponse | null>(null)
+
+  const healthQuery = useQuery({
+    queryKey: ['spatial-nexus-health'],
+    queryFn: getHealth,
+    refetchInterval: 30_000,
+    retry: 2,
+  })
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -83,13 +93,36 @@ export function ImpactPage() {
               </h1>
             </div>
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <a href="/docs" target="_blank" rel="noreferrer">
-              <BookOpen className="size-4" />
-              OpenAPI
-              <ExternalLink className="size-3 opacity-60" />
-            </a>
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {healthQuery.isPending ? (
+              <Badge variant="outline" className="gap-1">
+                <Loader2 className="size-3 animate-spin" aria-hidden />
+                <span aria-live="polite">Checking API…</span>
+              </Badge>
+            ) : healthQuery.isError ? (
+              <Badge variant="danger" title={(healthQuery.error as Error).message}>
+                API unreachable
+              </Badge>
+            ) : (
+              <>
+                <Badge
+                  variant={healthQuery.data.neo4j_configured ? 'success' : 'warning'}
+                  className="gap-1"
+                >
+                  <Layers className="size-3" aria-hidden />
+                  {healthQuery.data.neo4j_configured ? 'Neo4j OK' : 'Neo4j not configured'}
+                </Badge>
+                <Badge variant="outline">API OK · :{healthQuery.data.port}</Badge>
+              </>
+            )}
+            <Button variant="outline" size="sm" asChild>
+              <a href="/docs" target="_blank" rel="noreferrer">
+                <BookOpen className="size-4" />
+                OpenAPI
+                <ExternalLink className="size-3 opacity-60" />
+              </a>
+            </Button>
+          </div>
         </div>
       </header>
 
