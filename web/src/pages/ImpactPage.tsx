@@ -65,17 +65,22 @@ export function ImpactPage() {
   return (
     <div className="relative min-h-screen">
       <GridBackground />
-      <header className="border-b border-zinc-200/80 bg-white/80 backdrop-blur-md">
+      <header
+        className="border-b border-[var(--color-blueprint-edge)] bg-white/85 backdrop-blur-md"
+        role="banner"
+      >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-sm">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-[var(--color-cobalt)] text-white shadow-sm">
               <Map className="size-5" aria-hidden />
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                SelfAware®
+              <p className="mono text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-sage-deep)]">
+                SelfAware® · Atlas III
               </p>
-              <h1 className="text-lg font-semibold text-zinc-900">SpatialNexus</h1>
+              <h1 className="atlas-display text-xl font-semibold text-[var(--color-cobalt-deep)]">
+                SpatialNexus
+              </h1>
             </div>
           </div>
           <Button variant="outline" size="sm" asChild>
@@ -88,18 +93,17 @@ export function ImpactPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-10 px-4 py-10">
-        <SpotlightHero className="border border-zinc-200/80 bg-white/90 p-6 shadow-sm md:p-8">
-          <div className="space-y-2">
-            <Badge variant="success">Graph + topology</Badge>
-            <h2 className="text-2xl font-semibold tracking-tight text-zinc-900 md:text-3xl">
-              Impact analysis
+      <main id="main" role="main" className="mx-auto max-w-6xl space-y-10 px-4 py-10">
+        <SpotlightHero className="p-6 md:p-9">
+          <div className="space-y-3">
+            <Badge variant="success">Graph · Cypher · downstream impact</Badge>
+            <h2 className="atlas-display text-3xl font-semibold tracking-tight text-[var(--color-cobalt-deep)] md:text-4xl">
+              Topology atlas for HVAC + building systems
             </h2>
-            <p className="max-w-2xl text-sm leading-relaxed text-zinc-600">
-              Correlates failed assets with upstream/downstream dependencies. With{' '}
-              <code className="rounded bg-zinc-100 px-1">NEO4J_URI</code> set, results come
-              from your live graph; otherwise a deterministic stub illustrates the shape of
-              the response.
+            <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
+              Trace what fails next when an asset goes down. With{' '}
+              <code className="mono rounded bg-slate-100 px-1">NEO4J_URI</code> set, queries
+              run against your live graph — no stub fallback in production mode.
             </p>
           </div>
         </SpotlightHero>
