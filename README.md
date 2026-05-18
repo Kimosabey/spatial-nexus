@@ -2,8 +2,8 @@
 
 GraphRAG — HVAC/building topology in Neo4j; Cypher-first impact analysis.
 
-**GitHub:** `Kimosabey/selfaware-spatial-nexus` — after `gh auth login`, from this folder:
+**GitHub:** [Kimosabey/spatial-nexus](https://github.com/Kimosabey/spatial-nexus) — clone with SSH:
 
-`gh repo create Kimosabey/selfaware-spatial-nexus --private --source=. --remote=origin --push`
+`git clone git@github.com:Kimosabey/spatial-nexus.git`
 
 Planned API port: **8103**.
